@@ -51,7 +51,9 @@ namespace PlayniteMameMetadata
         {
             if (machine != null)
             {
-                yield return new Link("Arcade Museum", "https://www.arcade-museum.com/Machine/" + machine.Name);
+                yield return new Link(
+                    "Arcade Museum MAME machine",
+                    "https://www.arcade-museum.com/tech-center/machine/" + machine.Name);
             }
         }
 
@@ -59,9 +61,8 @@ namespace PlayniteMameMetadata
         {
             if (machine != null)
             {
-                yield return new MetadataNameProperty("Arcade");
+                yield return new MetadataSpecProperty("arcade");
             }
         }
     }
 }
-

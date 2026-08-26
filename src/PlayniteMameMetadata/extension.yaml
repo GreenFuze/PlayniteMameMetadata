@@ -4,3 +4,7 @@ Author: GreenFuze
 Version: 0.1.0
 Module: PlayniteMameMetadata.dll
 Type: MetadataProvider
+Icon: Resources\mame-metadata.png
+Links:
+  - Name: Website
+    Url: https://github.com/GreenFuze/PlayniteMameMetadata

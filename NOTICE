@@ -1,10 +1,32 @@
-PlayniteMameMetadata
-Copyright 2026 GreenFuze
+MAME DAT Metadata for Playnite
+Copyright 2026 GreenFuze and contributors
 
-This product adapts the MAME DAT indexing design and implementation concepts
-from My Games Anywhere, Copyright 2026 GreenFuze, licensed under the Apache
-License, Version 2.0.
+This project is licensed under the Apache License, Version 2.0.
+See LICENSE for the full license text.
 
-MAME names and machine data are downloaded at runtime from the official MAME
-project releases. No MAME data set or ROM content is distributed with this
-repository.
+MAME DAT Metadata reimplements the MAME release discovery, listxml parsing, and
+compact indexing design from My Games Anywhere (MGA), Copyright 2026 GreenFuze
+and contributors. MGA is licensed under the Apache License, Version 2.0. Its
+source is available at:
+https://github.com/GreenFuze/MyGamesAnywhere
+
+This project compiles against the Playnite SDK (MIT License, Copyright Josef
+Nemec). The Playnite SDK assembly is supplied by the host and is not
+redistributed in the extension package. Source and license:
+https://github.com/JosefNemec/Playnite
+
+At runtime, the plugin downloads the official MAME full listxml release asset
+from the mamedev/mame GitHub repository and creates a local lookup index. MAME
+is Copyright (c) 1997-2026 MAMEdev and contributors and is distributed under
+the GNU General Public License version 2. MAME is a registered trademark of
+Gregory Ember. The extension package contains no MAME program code, binaries,
+ROM content, or listxml data. MAME source and licensing information:
+https://github.com/mamedev/mame
+https://github.com/mamedev/mame/blob/master/COPYING
+
+The plugin creates outbound links to public Arcade Museum technical machine
+pages. It does not fetch or redistribute Arcade Museum content. Arcade Museum
+and related marks belong to their respective owners.
+
+This independent project is not affiliated with or endorsed by MAMEdev,
+Gregory Ember, Arcade Museum, Josef Nemec, or the Playnite project.

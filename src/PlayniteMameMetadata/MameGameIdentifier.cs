@@ -20,12 +20,19 @@ namespace PlayniteMameMetadata
                 yield break;
             }
 
+            var hasArcadePlatform = HasArcadePlatform(game);
             var emitted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (game.Roms != null)
             {
                 foreach (var rom in game.Roms)
                 {
-                    var candidate = Normalize(rom?.Path ?? rom?.Name);
+                    var romPath = rom?.Path ?? rom?.Name;
+                    if (!hasArcadePlatform && !HasMamePathContext(romPath))
+                    {
+                        continue;
+                    }
+
+                    var candidate = Normalize(romPath);
                     if (candidate != null && emitted.Add(candidate))
                     {
                         yield return candidate;
@@ -44,8 +51,7 @@ namespace PlayniteMameMetadata
                     }
 
                     Uri uri;
-                    if (Uri.TryCreate(url, UriKind.Absolute, out uri) &&
-                        uri.Host.IndexOf("arcade-museum.com", StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (Uri.TryCreate(url, UriKind.Absolute, out uri) && IsArcadeMuseumHost(uri.Host))
                     {
                         var candidate = Normalize(uri.Segments.LastOrDefault());
                         if (candidate != null && emitted.Add(candidate))
@@ -59,17 +65,24 @@ namespace PlayniteMameMetadata
             var match = CloudArchivePattern.Match(game.Description ?? string.Empty);
             if (match.Success)
             {
-                var candidate = Normalize(match.Groups["path"].Value);
-                if (candidate != null && emitted.Add(candidate))
+                var archivePath = match.Groups["path"].Value;
+                if (hasArcadePlatform || HasMamePathContext(archivePath))
                 {
-                    yield return candidate;
+                    var candidate = Normalize(archivePath);
+                    if (candidate != null && emitted.Add(candidate))
+                    {
+                        yield return candidate;
+                    }
                 }
             }
 
-            var nameCandidate = Normalize(game.Name);
-            if (nameCandidate != null && emitted.Add(nameCandidate))
+            if (hasArcadePlatform)
             {
-                yield return nameCandidate;
+                var nameCandidate = Normalize(game.Name);
+                if (nameCandidate != null && emitted.Add(nameCandidate))
+                {
+                    yield return nameCandidate;
+                }
             }
         }
 
@@ -102,7 +115,14 @@ namespace PlayniteMameMetadata
             var normalized = value.Trim().TrimEnd('/', '\\');
             normalized = normalized.Replace('/', Path.DirectorySeparatorChar);
             normalized = Path.GetFileName(normalized);
-            normalized = Uri.UnescapeDataString(normalized ?? string.Empty);
+            try
+            {
+                normalized = Uri.UnescapeDataString(normalized ?? string.Empty);
+            }
+            catch (UriFormatException)
+            {
+                return null;
+            }
             var extension = Path.GetExtension(normalized);
             if (!string.IsNullOrWhiteSpace(extension))
             {
@@ -111,6 +131,32 @@ namespace PlayniteMameMetadata
 
             return string.IsNullOrWhiteSpace(normalized) ? null : normalized.Trim();
         }
+
+        private static bool IsArcadeMuseumHost(string host)
+        {
+            return string.Equals(host, "arcade-museum.com", StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrWhiteSpace(host) &&
+                 host.EndsWith(".arcade-museum.com", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool HasArcadePlatform(Game game)
+        {
+            return game.Platforms?.Any(platform =>
+                string.Equals(platform?.SpecificationId, "arcade", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(platform?.Name, "Arcade", StringComparison.OrdinalIgnoreCase)) == true;
+        }
+
+        private static bool HasMamePathContext(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            return Regex.Split(value, @"[\\/]+")
+                .Any(segment =>
+                    string.Equals(segment, "MAME", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(segment, "Arcade", StringComparison.OrdinalIgnoreCase));
+        }
     }
 }
-

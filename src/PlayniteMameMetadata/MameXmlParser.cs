@@ -23,7 +23,8 @@ namespace PlayniteMameMetadata
                 DtdProcessing = DtdProcessing.Ignore,
                 IgnoreComments = true,
                 IgnoreWhitespace = true,
-                CloseInput = false
+                CloseInput = false,
+                XmlResolver = null
             };
 
             using (var reader = XmlReader.Create(stream, settings))
@@ -37,7 +38,7 @@ namespace PlayniteMameMetadata
                     }
 
                     var machine = ParseMachine(XElement.Load(reader.ReadSubtree()));
-                    if (!string.IsNullOrWhiteSpace(machine.Name))
+                    if (machine != null && !string.IsNullOrWhiteSpace(machine.Name))
                     {
                         machines.Add(machine);
                     }
@@ -49,6 +50,12 @@ namespace PlayniteMameMetadata
 
         private static MameMachine ParseMachine(XElement element)
         {
+            if (IsTrue((string)element.Attribute("isdevice")) ||
+                IsFalse((string)element.Attribute("runnable")))
+            {
+                return null;
+            }
+
             var machine = new MameMachine
             {
                 Name = (string)element.Attribute("name"),
@@ -62,6 +69,20 @@ namespace PlayniteMameMetadata
             };
 
             return machine;
+        }
+
+        private static bool IsTrue(string value)
+        {
+            return string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(value, "1", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsFalse(string value)
+        {
+            return string.Equals(value, "no", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(value, "0", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

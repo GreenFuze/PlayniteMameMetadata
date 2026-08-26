@@ -22,6 +22,7 @@ namespace PlayniteMameMetadata
     public sealed class MameReleaseClient : IDisposable
     {
         private const string LatestReleaseUrl = "https://api.github.com/repos/mamedev/mame/releases/latest";
+        private const long MaximumDownloadBytes = 512L * 1024 * 1024;
         private readonly HttpClient httpClient;
         private readonly bool ownsClient;
 
@@ -32,6 +33,11 @@ namespace PlayniteMameMetadata
             if (!this.httpClient.DefaultRequestHeaders.UserAgent.Any())
             {
                 this.httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("PlayniteMameMetadata/0.1");
+            }
+
+            if (!this.httpClient.DefaultRequestHeaders.Accept.Any())
+            {
+                this.httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             }
         }
 
@@ -44,12 +50,21 @@ namespace PlayniteMameMetadata
                 {
                     var serializer = new DataContractJsonSerializer(typeof(GitHubRelease));
                     var release = (GitHubRelease)serializer.ReadObject(stream);
+                    if (release == null || string.IsNullOrWhiteSpace(release.TagName))
+                    {
+                        throw new InvalidDataException("The latest MAME release response has no version tag.");
+                    }
+
                     var asset = release.Assets?.FirstOrDefault(a =>
-                        !string.IsNullOrWhiteSpace(a.Name) && a.Name.EndsWith("lx.zip", StringComparison.OrdinalIgnoreCase));
+                        !string.IsNullOrWhiteSpace(a.Name) &&
+                        a.Name.StartsWith("mame", StringComparison.OrdinalIgnoreCase) &&
+                        a.Name.EndsWith("lx.zip", StringComparison.OrdinalIgnoreCase));
                     if (asset == null || string.IsNullOrWhiteSpace(asset.DownloadUrl))
                     {
                         throw new InvalidDataException("The latest MAME release has no full DAT (lx.zip) asset.");
                     }
+
+                    ValidateDownloadUrl(asset.DownloadUrl);
 
                     return new MameReleaseAsset
                     {
@@ -72,10 +87,17 @@ namespace PlayniteMameMetadata
                 throw new ArgumentNullException(nameof(asset));
             }
 
+            ValidateDownloadUrl(asset.DownloadUrl);
+
             using (var response = await httpClient.GetAsync(asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
             {
                 response.EnsureSuccessStatusCode();
                 var total = response.Content.Headers.ContentLength;
+                if (total.HasValue && total.Value > MaximumDownloadBytes)
+                {
+                    throw new InvalidDataException("The MAME DAT download is larger than the supported safety limit.");
+                }
+
                 using (var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
                 using (var output = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
                 {
@@ -86,12 +108,29 @@ namespace PlayniteMameMetadata
                     {
                         await output.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);
                         copied += read;
+                        if (copied > MaximumDownloadBytes)
+                        {
+                            throw new InvalidDataException("The MAME DAT download exceeded the supported safety limit.");
+                        }
+
                         if (total.HasValue && total.Value > 0)
                         {
                             progress?.Report(copied * 100d / total.Value);
                         }
                     }
                 }
+            }
+        }
+
+        private static void ValidateDownloadUrl(string value)
+        {
+            Uri uri;
+            if (!Uri.TryCreate(value, UriKind.Absolute, out uri) ||
+                !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
+                !uri.AbsolutePath.StartsWith("/mamedev/mame/releases/download/", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException("The MAME release contains an unexpected download URL.");
             }
         }
 
@@ -124,4 +163,3 @@ namespace PlayniteMameMetadata
         }
     }
 }
-

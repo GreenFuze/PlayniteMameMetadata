@@ -48,12 +48,24 @@ namespace PlayniteMameMetadata
 
         public override OnDemandMetadataProvider GetMetadataProvider(MetadataRequestOptions options)
         {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             return new MameMetadataProvider(options.GameData, indexService.Current, identifier);
         }
 
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args)
         {
             Logger.Info("MAME DAT Metadata application-start initialization scheduled.");
+            if (indexService.Current == null)
+            {
+                AddNotification(
+                    "MAME DAT Metadata is preparing its first local index. Metadata will be available when this notification updates.",
+                    NotificationType.Info);
+            }
+
             Task.Run(() => UpdateInBackgroundAsync());
         }
 

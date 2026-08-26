@@ -31,6 +31,11 @@ namespace PlayniteMameMetadata
             using (var stream = File.OpenRead(indexPath))
             {
                 var document = (MameIndexDocument)serializer.ReadObject(stream);
+                if (document == null || document.Machines == null)
+                {
+                    throw new InvalidDataException("The cached MAME index is incomplete.");
+                }
+
                 return new MameIndex(document.Version, document.Machines);
             }
         }
@@ -80,4 +85,3 @@ namespace PlayniteMameMetadata
         }
     }
 }
-

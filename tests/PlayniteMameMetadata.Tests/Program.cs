@@ -22,8 +22,12 @@ namespace PlayniteMameMetadata.Tests
 
                 ParserReadsMameMachineXml();
                 ParserReadsLegacyDatafileXml();
+                ParserSkipsNonRunnableDevices();
+                ParserIgnoresMameDocumentTypeDefinition();
                 IndexLookupIsCaseInsensitive();
                 IdentifierUsesCloudArchiveAndRomPaths();
+                IdentifierValidatesArcadeMuseumHosts();
+                IdentifierRejectsUnscopedNameMatches();
                 MetadataProviderMapsFields();
                 IndexStoreRoundTrips();
                 Console.WriteLine("All PlayniteMameMetadata tests passed.");
@@ -86,6 +90,26 @@ namespace PlayniteMameMetadata.Tests
             Equal("puckman", Parse(xml).Single().Name, "legacy datafile game");
         }
 
+        private static void ParserSkipsNonRunnableDevices()
+        {
+            const string xml = "<mame>" +
+                "<machine name='z80' isdevice='yes'><description>Zilog Z80</description></machine>" +
+                "<machine name='bios' runnable='no'><description>BIOS</description></machine>" +
+                "<machine name='arknoid2'><description>Arkanoid - Revenge of DOH</description></machine>" +
+                "</mame>";
+            var machines = Parse(xml);
+            Equal(1, machines.Length, "non-runnable device filter");
+            Equal("arknoid2", machines[0].Name, "remaining runnable machine");
+        }
+
+        private static void ParserIgnoresMameDocumentTypeDefinition()
+        {
+            const string xml = "<!DOCTYPE mame [<!ELEMENT mame (machine*)>]><mame>" +
+                "<machine name='arknoid2'><description>Arkanoid - Revenge of DOH</description></machine>" +
+                "</mame>";
+            Equal("arknoid2", Parse(xml).Single().Name, "MAME document type ignored");
+        }
+
         private static void IndexLookupIsCaseInsensitive()
         {
             var index = TestIndex();
@@ -105,20 +129,60 @@ namespace PlayniteMameMetadata.Tests
             {
                 Roms = new ObservableCollection<GameRom>
                 {
-                    new GameRom("Arkanoid", @"C:\Games\arknoid2.zip")
+                    new GameRom("Arkanoid", @"C:\Games\MAME\arknoid2.zip")
                 }
             };
             True(identifier.TryIdentify(romGame, TestIndex(), out machine), "ROM path candidate");
         }
 
+        private static void IdentifierValidatesArcadeMuseumHosts()
+        {
+            var identifier = new MameGameIdentifier();
+            MameMachine machine;
+            var trusted = new Game("Unknown")
+            {
+                Links = new ObservableCollection<Link>
+                {
+                    new Link("Machine", "https://www.arcade-museum.com/tech-center/machine/arknoid2")
+                }
+            };
+            True(identifier.TryIdentify(trusted, TestIndex(), out machine), "trusted Arcade Museum host");
+
+            var lookalike = new Game("Unknown")
+            {
+                Links = new ObservableCollection<Link>
+                {
+                    new Link("Machine", "https://arcade-museum.com.example.invalid/machine/arknoid2")
+                }
+            };
+            True(!identifier.TryIdentify(lookalike, TestIndex(), out machine), "lookalike Arcade Museum host rejected");
+        }
+
+        private static void IdentifierRejectsUnscopedNameMatches()
+        {
+            var identifier = new MameGameIdentifier();
+            MameMachine machine;
+            True(
+                !identifier.TryIdentify(new Game("arknoid2"), TestIndex(), out machine),
+                "name-only match without Arcade or MAME context rejected");
+        }
+
         private static void MetadataProviderMapsFields()
         {
-            var provider = new MameMetadataProvider(new Game("arknoid2"), TestIndex(), new MameGameIdentifier());
+            var game = new Game("arknoid2")
+            {
+                Description = "Imported game.\nCloud archive: My Drive/Games/MAME/arknoid2.zip"
+            };
+            var provider = new MameMetadataProvider(game, TestIndex(), new MameGameIdentifier());
             True(provider.AvailableFields.Contains(MetadataField.Name), "name field available");
             Equal("Arkanoid - Revenge of DOH", provider.GetName(null), "metadata title");
             Equal(1987, provider.GetReleaseDate(null).Value.Year, "metadata year");
             Equal("Taito Corporation Japan", ((MetadataNameProperty)provider.GetPublishers(null).Single()).Name, "publisher");
-            Equal("Arcade", ((MetadataNameProperty)provider.GetPlatforms(null).Single()).Name, "platform");
+            Equal("arcade", ((MetadataSpecProperty)provider.GetPlatforms(null).Single()).Id, "platform specification");
+            Equal(
+                "https://www.arcade-museum.com/tech-center/machine/arknoid2",
+                provider.GetLinks(null).Single().Url,
+                "Arcade Museum link");
         }
 
         private static void IndexStoreRoundTrips()
@@ -178,5 +242,6 @@ namespace PlayniteMameMetadata.Tests
                 throw new InvalidOperationException($"Assertion failed ({message}): expected '{expected}', got '{actual}'.");
             }
         }
+
     }
 }

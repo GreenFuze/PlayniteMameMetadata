@@ -1,0 +1,11 @@
+AddonId: MameMetadata_0d873564-ca47-40b3-a77d-fb8b2afe2fdd
+Packages:
+  - Version: 0.1.0
+    RequiredApiVersion: 6.16.0
+    ReleaseDate: 2026-08-26
+    PackageUrl: https://github.com/GreenFuze/PlayniteMameMetadata/releases/download/v0.1.0/MameDatMetadata_0_1_0.pext
+    Changelog:
+      - Initial public beta.
+      - Resolves exact MAME machine identifiers using the latest official full listxml release.
+      - Supplies canonical title, release year, manufacturer, Arcade platform, and machine links.
+      - Excludes non-runnable devices and stores only a compact local index.
