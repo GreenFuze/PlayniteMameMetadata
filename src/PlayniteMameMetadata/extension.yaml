@@ -1,0 +1,6 @@
+Id: MameMetadata_0d873564-ca47-40b3-a77d-fb8b2afe2fdd
+Name: MAME DAT Metadata
+Author: GreenFuze
+Version: 0.1.0
+Module: PlayniteMameMetadata.dll
+Type: MetadataProvider

@@ -1,0 +1,10 @@
+PlayniteMameMetadata
+Copyright 2026 GreenFuze
+
+This product adapts the MAME DAT indexing design and implementation concepts
+from My Games Anywhere, Copyright 2026 GreenFuze, licensed under the Apache
+License, Version 2.0.
+
+MAME names and machine data are downloaded at runtime from the official MAME
+project releases. No MAME data set or ROM content is distributed with this
+repository.
